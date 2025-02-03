@@ -1,0 +1,16 @@
+{
+    // 使用 IntelliSense 以得知可用的屬性。
+    // 暫留以檢視現有屬性的描述。
+    // 如需詳細資訊，請瀏覽: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python 偵錯工具: 帶引數的目前檔案",
+            "type": "debugpy",
+            "request": "launch",
+            "program": ".\\src\\mcpcli\\__main__.py",
+            "console": "integratedTerminal",
+            "args": ["--config-file","D:\\01_程式開發\\10_AI\\101_Services\\mcp-cli\\server_config.json","--all"]
+        }
+    ]
+}

@@ -47,6 +47,9 @@ class LLMClient:
         elif self.provider == "ollama":
             # perform an ollama completion
             return self._ollama_completion(messages, tools)
+        elif self.provider == "vllm":
+            # perform an openai completion
+            return self._vllm_completion(messages, tools)
         else:
             # unsupported providers
             raise ValueError(f"Unsupported provider: {self.provider}")
@@ -72,6 +75,30 @@ class LLMClient:
         except Exception as e:
             # error
             logging.error(f"OpenAI API Error: {str(e)}")
+            raise ValueError(f"OpenAI API Error: {str(e)}")
+    def _vllm_completion(self, messages: List[Dict], tools: List) -> Dict[str, Any]:
+        """Handle OpenAI chat completions."""
+        # get the openai client
+        client = OpenAI(
+            base_url="http://localhost:8000/v1",
+            api_key="EMPTY"            
+            )
+        try:
+            # make a request, passing in tools
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=tools or [],
+            )
+
+            # return the response
+            return {
+                "response": response.choices[0].message.content,
+                "tool_calls": getattr(response.choices[0].message, "tool_calls", []),
+            }
+        except Exception as e:
+            # error
+            logging.error(f"vllm API Error: {str(e)}")
             raise ValueError(f"OpenAI API Error: {str(e)}")
 
     def _anthropic_completion(self, messages: List[Dict], tools: List) -> Dict[str, Any]:
