@@ -15,55 +15,56 @@ from mcpcli.transport.stdio.stdio_server_parameters import StdioServerParameters
 
 @asynccontextmanager
 async def stdio_client(server: StdioServerParameters):
-    # ensure we have a server command
+    # 確保服務器命令存在
     if not server.command:
         raise ValueError("Server command must not be empty.")
 
-    # ensure we have server arguments as a list or tuple
+    # 確保服務器參數是列表或元組
     if not isinstance(server.args, (list, tuple)):
         raise ValueError("Server arguments must be a list or tuple.")
 
-    # create the the read and write streams
+    # 建立讀取和寫入流
     read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
     write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
-    # start the subprocess
+    # 啟動子進程
     process = await anyio.open_process(
         [server.command, *server.args],
         env={**get_default_environment(), **(server.env or {})},
         stderr=sys.stderr,
     )
 
-    # started server
+    # 服務器已啟動
     logging.debug(
         f"Subprocess started with PID {process.pid}, command: {server.command}"
     )
 
-    # create a task to read from the subprocess' stdout
+    # 創建一個任務從子進程的 stdout 讀取
     async def process_json_line(line: str, writer):
         try:
             logging.debug(f"Processing line: {line.strip()}")
             data = json.loads(line)
 
-            # parse the json
+            # 解析 JSON
             logging.debug(f"Parsed JSON data: {data}")
 
-            # validate the jsonrpc message
+            # 驗證 JSON-RPC 消息
             message = JSONRPCMessage.model_validate(data)
             logging.debug(f"Validated JSONRPCMessage: {message}")
 
-            # send the message
+            # 發送消息
             await writer.send(message)
         except json.JSONDecodeError as exc:
-            # not valid json
+            # 不是有效的 JSON
             logging.error(f"JSON decode error: {exc}. Line: {line.strip()}")
         except Exception as exc:
-            # other exception
+            # 其他異常
             logging.error(f"Error processing message: {exc}. Line: {line.strip()}")
             logging.debug(f"Traceback:\n{traceback.format_exc()}")
 
     async def stdout_reader():
-        """Read JSON-RPC messages from the server's stdout."""
+        """從服務器的 stdout 讀取 JSON-RPC 消息."""
+        # 確保進程的 stdout 存在
         assert process.stdout, "Opened process is missing stdout"
         buffer = ""
         logging.debug("Starting stdout_reader")
@@ -87,7 +88,8 @@ async def stdio_client(server: StdioServerParameters):
             logging.debug("Exiting stdout_reader")
 
     async def stdin_writer():
-        """Send JSON-RPC messages from the write stream to the server's stdin."""
+        """從寫入流發送 JSON-RPC 消息到服務器的 stdin."""
+        # 確保進程的 stdin 存在
         assert process.stdin, "Opened process is missing stdin"
         logging.debug("Starting stdin_writer")
         try:
@@ -106,9 +108,9 @@ async def stdio_client(server: StdioServerParameters):
             logging.debug("Exiting stdin_writer")
 
     async def terminate_process():
-        """Gracefully terminate the subprocess."""
+        """優雅地終止子進程."""
         try:
-            if process.returncode is None:  # Process is still running
+            if process.returncode is None:  # 進程仍在運行
                 logging.debug("Terminating subprocess...")
                 process.terminate()
                 with anyio.fail_after(5):
@@ -132,11 +134,11 @@ async def stdio_client(server: StdioServerParameters):
             tg.start_soon(stdin_writer)
             yield read_stream, write_stream
 
-        # exit the task group
+        # 退出任務組
         exit_code = await process.wait()
         logging.info(f"Process exited with code {exit_code}")
     except Exception as exc:
-        # other exception
+        # 其他異常
         logging.error(f"Unhandled error in TaskGroup: {exc}")
         logging.debug(f"Traceback:\n{traceback.format_exc()}")
         if hasattr(exc, "__cause__") and exc.__cause__:
